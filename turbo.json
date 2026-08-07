@@ -1,0 +1,42 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "build/**", ".next/**", "target/**"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": [],
+      "outputs": ["coverage/**"],
+      "cache": true
+    },
+    "lint": {
+      "dependsOn": [],
+      "cache": true
+    },
+    "typecheck": {
+      "dependsOn": [],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "generate": {
+      "dependsOn": [],
+      "cache": true
+    }
+  },
+  "globalEnv": ["NODE_ENV", "RUST_LOG"],
+  "tasks": {
+    "generate:proto": {
+      "command": "cd packages/core/presidium-proto && cargo build && cargo run --bin generate-ts",
+      "outputs": ["packages/types/**"]
+    },
+    "generate:uniffi": {
+      "command": "cd packages/core/presidium-ffi && cargo build --release && cargo run --bin generate-bindings",
+      "outputs": ["packages/types/**", "apps/mobile/src/generated/**", "apps/desktop/src/generated/**"]
+    }
+  }
+}

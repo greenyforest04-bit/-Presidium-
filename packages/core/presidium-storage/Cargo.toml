@@ -1,0 +1,30 @@
+[package]
+name = "presidium-storage"
+version = "0.1.0"
+edition = "2021"
+description = "SQLCipher + Yrs CRDT encrypted local storage for Presidium"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+presidium-crypto = { path = "../presidium-crypto" }
+presidium-sqleet = { path = "../presidium-sqleet" }
+x25519-dalek = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+argon2 = { workspace = true }
+yrs = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[lib]
+name = "presidium_storage"
+crate-type = ["cdylib", "rlib", "staticlib"]

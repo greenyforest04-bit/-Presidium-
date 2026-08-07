@@ -1,0 +1,25 @@
+[package]
+name = "presidium-sync"
+version = "0.1.0"
+edition = "2021"
+description = "CRDT-based offline-first sync engine for Presidium"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+presidium-crypto = { path = "../presidium-crypto" }
+yrs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+[lib]
+name = "presidium_sync"
+crate-type = ["cdylib", "rlib", "staticlib"]

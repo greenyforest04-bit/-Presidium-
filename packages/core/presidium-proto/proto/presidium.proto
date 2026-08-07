@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+package presidium;
+
+// Core identity and device info
+message DeviceInfo {
+  bytes device_id = 1;          // 16-byte UUID
+  string platform = 2;          // ios, android, desktop, web
+  string name = 3;
+  bytes identity_key = 4;       // 32-byte Ed25519 pubkey
+  uint64 created_at = 5;
+}
+
+// Conversation types
+enum ConversationType {
+  CONVERSATION_TYPE_UNSPECIFIED = 0;
+  CONVERSATION_TYPE_DIRECT = 1;
+  CONVERSATION_TYPE_GROUP = 2;
+  CONVERSATION_TYPE_CHANNEL = 3;
+  CONVERSATION_TYPE_FEED = 4;
+  CONVERSATION_TYPE_STORIES = 5;
+}
+
+// A single message in any conversation
+message Message {
+  bytes message_id = 1;         // 16-byte ULID
+  bytes conversation_id = 2;
+  ConversationType type = 3;
+  bytes sender_device_id = 4;
+  uint64 timestamp = 5;
+  uint64 edit_timestamp = 6;    // 0 = never edited
+
+  // Encrypted payload (Double Ratchet / sender key protected)
+  bytes encrypted_payload = 10;
+  bytes mac = 11;               // HMAC-SHA256 over ciphertext + header
+  uint32 protocol_version = 12;
+
+  // Message content (plaintext after decryption, kept for UI)
+  Content content = 20;
+
+  // Delivery metadata
+  enum DeliveryState {
+    DELIVERY_STATE_UNSPECIFIED = 0;
+    DELIVERY_STATE_PENDING = 1;
+    DELIVERY_STATE_SENT = 2;
+    DELIVERY_STATE_DELIVERED = 3;
+    DELIVERY_STATE_READ = 4;
+    DELIVERY_STATE_FAILED = 5;
+  }
+  DeliveryState delivery_state = 21;
+
+  // Replies
+  bytes reply_to_message_id = 22; // empty = no reply
+
+  // Disappearing messages (0 = permanent)
+  uint32 ttl_seconds = 23;
+}
+
+// Message content envelope (decrypted)
+message Content {
+  oneof kind {
+    TextContent text = 1;
+    MediaContent media = 2;
+    StoryContent story = 3;
+    ReactionContent reaction = 4;
+    EditContent edit = 5;
+    DeleteContent delete = 6;
+    SystemEvent system = 7;
+  }
+}
+
+message TextContent {
+  string text = 1;
+  repeated FormatRange formats = 2;
+}
+
+message FormatRange {
+  uint32 start = 1;
+  uint32 end = 2;
+  enum FormatType {
+    FORMAT_TYPE_UNSPECIFIED = 0;
+    FORMAT_TYPE_BOLD = 1;
+    FORMAT_TYPE_ITALIC = 2;
+    FORMAT_TYPE_MONO = 3;
+    FORMAT_TYPE_SPOILER = 4;
+    FORMAT_TYPE_LINK = 5;
+  }
+  FormatType type = 3;
+  string link = 4; // for FORMAT_TYPE_LINK
+}
+
+message MediaContent {
+  enum MediaKind {
+    MEDIA_KIND_UNSPECIFIED = 0;
+    MEDIA_KIND_IMAGE = 1;
+    MEDIA_KIND_AUDIO = 2;        // voice message
+    MEDIA_KIND_VIDEO_CIRCLE = 3; // circular 60s video
+    MEDIA_KIND_FILE = 4;
+    MEDIA_KIND_STICKER = 5;
+    MEDIA_KIND_VIDEO = 6;
+  }
+  MediaKind kind = 1;
+  string mime_type = 2;
+  uint64 size_bytes = 3;
+  uint32 duration_ms = 4;        // audio / video
+  bytes media_key_enc = 5;       // per-file key encrypted to recipients
+  string file_name = 6;
+  bytes thumbnail_enc = 7;       // encrypted blur thumbnail
+  uint64 width = 8;
+  uint64 height = 9;
+}
+
+message StoryContent {
+  bytes story_id = 1;
+  bytes media_key_enc = 2;
+  string mime_type = 3;
+  uint64 created_at = 4;
+  uint32 ttl_seconds = 5;        // 86400 default
+  uint64 duration_ms = 6;
+}
+
+message ReactionContent {
+  bytes message_id = 1;
+  string emoji = 2;              // codepoint sequence
+  bool remove = 3;               // true = unreact
+}
+
+message EditContent {
+  bytes message_id = 1;
+  string new_text = 2;
+  uint64 edited_at = 3;
+}
+
+message DeleteContent {
+  bytes message_id = 1;
+  bool delete_for_everyone = 2;
+}
+
+message SystemEvent {
+  enum EventType {
+    EVENT_TYPE_UNSPECIFIED = 0;
+    EVENT_TYPE_MEMBER_ADDED = 1;
+    EVENT_TYPE_MEMBER_REMOVED = 2;
+    EVENT_TYPE_GROUP_RENAMED = 3;
+    EVENT_TYPE_CHANNEL_CREATED = 4;
+    EVENT_TYPE_ADMIN_ADDED = 5;
+    EVENT_TYPE_ADMIN_REMOVED = 6;
+    EVENT_TYPE_SESSION_RESET = 7;
+  }
+  EventType type = 1;
+  bytes actor_device_id = 2;
+  bytes target_device_id = 3;
+  string extra = 4;
+}
+
+// Conversation metadata
+message Conversation {
+  bytes conversation_id = 1;
+  ConversationType type = 2;
+  string title = 3;
+  bytes avatar_enc = 4;
+  uint64 created_at = 5;
+  repeated bytes member_device_ids = 6;
+  bytes last_message_id = 7;
+  uint64 last_message_at = 8;
+  uint32 unread_count = 9;
+  bool muted = 10;
+  bool pinned = 11;
+  bool archived = 12;
+}
+
+// Stories feed item
+message Story {
+  bytes story_id = 1;
+  bytes sender_device_id = 2;
+  uint64 created_at = 3;
+  uint32 ttl_seconds = 4;
+  bytes media_key_enc = 5;
+  string mime_type = 6;
+  uint64 duration_ms = 7;
+  repeated bytes viewer_device_ids = 8;
+}
+
+// User profile (locally stored, synced via P2P)
+message Profile {
+  bytes user_id = 1;
+  string display_name = 2;
+  bytes avatar_enc = 3;
+  string bio = 4;
+  uint64 updated_at = 5;
+  repeated DeviceInfo devices = 6;
+}
+
+// Sync envelope (CRDT state transfer between devices)
+message SyncEnvelope {
+  bytes device_id = 1;
+  uint64 sequence = 2;
+  bytes document_state = 3;  // Yrs update (encrypted at transport layer)
+  bytes signature = 4;       // Ed25519 over content
+}
+
+// Wire transport envelope for both unicast (request-response) and
+// multicast (gossipsub) delivery between devices.
+message NetworkEnvelope {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_DIRECT = 1;    // request-response unicast
+    KIND_GROUP = 2;     // gossipsub topic message
+    KIND_SYNC = 3;      // CRDT sync update
+  }
+  Kind kind = 1;
+  bytes conversation_id = 2;    // 16-byte ULID
+  bytes sender_device_id = 3;   // 16-byte UUID
+  uint64 timestamp = 4;
+  // Encrypted application payload (Double Ratchet / sender key protected)
+  bytes encrypted_payload = 5;
+  bytes mac = 6;                // HMAC-SHA256 over ciphertext + header
+  uint32 protocol_version = 7;
+  bytes nonce = 8;
+  bytes signature = 9;          // Ed25519 over ciphertext + header
+}
+
+// Request payload for the request-response protocol.
+message NetworkRequest {
+  NetworkEnvelope envelope = 1;
+}
+
+// Response payload for the request-response protocol.
+message NetworkResponse {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_OK = 1;
+    STATUS_DELIVERED = 2;
+    STATUS_UNKNOWN_CONVERSATION = 3;
+    STATUS_ERROR = 4;
+  }
+  Status status = 1;
+  bytes ack_id = 2;             // envelope hash / message id
+}

@@ -1,0 +1,28 @@
+[package]
+name = "presidium-demo"
+version = "0.1.0"
+edition = "2021"
+description = "E2E demo: PQXDH + Double Ratchet + SenderKeys over libp2p with encrypted storage"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+
+[dependencies]
+presidium-crypto = { path = "../presidium-crypto" }
+presidium-network = { path = "../presidium-network" }
+presidium-storage = { path = "../presidium-storage" }
+presidium-proto = { path = "../presidium-proto" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+x25519-dalek = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+libp2p = { workspace = true }
+multiaddr = { workspace = true }

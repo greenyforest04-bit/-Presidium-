@@ -1,0 +1,24 @@
+[package]
+name = "presidium-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "UniFFI bindings exposing Presidium core to Swift, Kotlin, TypeScript"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+publish = false
+
+[dependencies]
+presidium-crypto = { path = "../presidium-crypto", features = ["bindings"] }
+presidium-storage = { path = "../presidium-storage" }
+presidium-network = { path = "../presidium-network" }
+presidium-sync = { path = "../presidium-sync" }
+presidium-media = { path = "../presidium-media" }
+presidium-proto = { path = "../presidium-proto" }
+uniffi = { version = "0.28", features = ["tokio"] }
+
+[lib]
+name = "presidium_ffi"
+crate-type = ["cdylib", "staticlib"]
+
+[build-dependencies]
+uniffi_build = { version = "0.28" }

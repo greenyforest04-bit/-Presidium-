@@ -1,0 +1,13 @@
+[package]
+name = "presidium-sqleet"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal safe wrapper over the vendored sqleet (encrypted SQLite, ChaCha20-Poly1305)"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+
+[build-dependencies]
+cc = "1.0"
+
+[lib]
+name = "presidium_sqleet"

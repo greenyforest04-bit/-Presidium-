@@ -1,0 +1,33 @@
+{
+  "name": "presidium",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Presidium - P2P E2EE Messenger",
+  "author": "Sergey Presidium <presidium_messanger@internet.ru>",
+  "license": "GPL-3.0-only",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml,toml}\"",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "prettier": "^3.3.0",
+    "husky": "^9.0.0",
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

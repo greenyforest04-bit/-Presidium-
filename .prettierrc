@@ -1,0 +1,26 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "bracketSpacing": true,
+  "arrowParens": "avoid",
+  "endOfLine": "lf",
+  "plugins": ["prettier-plugin-toml", "prettier-plugin-rust"],
+  "overrides": [
+    {
+      "files": "*.rs",
+      "options": {
+        "printWidth": 100,
+        "tabWidth": 4
+      }
+    },
+    {
+      "files": "*.toml",
+      "options": {
+        "tabWidth": 2
+      }
+    }
+  ]
+}

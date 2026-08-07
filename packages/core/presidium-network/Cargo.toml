@@ -1,0 +1,38 @@
+[package]
+name = "presidium-network"
+version = "0.1.0"
+edition = "2021"
+description = "libp2p P2P networking layer for Presidium"
+license = "GPL-3.0-only"
+authors = ["Sergey Presidium <presidium_messanger@internet.ru>"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+presidium-crypto = { path = "../presidium-crypto" }
+presidium-proto = { path = "../presidium-proto" }
+libp2p = { workspace = true }
+multiaddr = { workspace = true }
+multihash = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }
+prost = { workspace = true }
+futures = "0.3"
+async-trait = "0.1"
+sha2 = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true }
+
+[lib]
+name = "presidium_network"
+crate-type = ["cdylib", "rlib", "staticlib"]

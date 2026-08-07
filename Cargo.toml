@@ -1,0 +1,121 @@
+[workspace]
+resolver = "2"
+members = [
+    "packages/core/presidium-crypto",
+    "packages/core/presidium-storage",
+    "packages/core/presidium-network",
+    "packages/core/presidium-demo",
+    "packages/core/presidium-sync",
+    "packages/core/presidium-media",
+    "packages/core/presidium-proto",
+    "packages/core/presidium-ffi",
+    "packages/core/presidium-sqleet",
+]
+
+[workspace.dependencies]
+# Crypto (2026 stable versions)
+ml-kem = { version = "0.3", features = ["zeroize"] }
+ml-dsa = { version = "0.1", features = ["zeroize", "rand_core"] }
+x25519-dalek = { version = "3.0", features = ["static_secrets", "reusable_secrets", "getrandom", "zeroize"] }
+ed25519-dalek = { version = "3.0", features = ["rand_core", "serde", "alloc"] }
+chacha20poly1305 = "0.11"
+aes-gcm = "0.11"
+hkdf = "0.13"
+sha2 = "0.11"
+hmac = "0.13"
+rand = { version = "0.10", features = ["std", "std_rng", "sys_rng", "thread_rng"] }
+zeroize = { version = "1.9", features = ["derive"] }
+zeroize_derive = "1.4"
+memguard = "0.1"
+subtle = "2.6"
+constant_time_eq = "0.3"
+kem = "0.3"
+
+# PQC Hybrid
+pqc-hybrid-kem = { version = "0.1" }
+pqc-hybrid-sig = { version = "0.1" }
+
+# Serialization
+prost = "0.14"
+prost-types = "0.14"
+prost-build = "0.14"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_bytes = "0.11"
+bytes = { version = "1.6", features = ["serde"] }
+
+# Storage
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "chrono", "uuid", "migrate"] }
+sled = "1.0.0-alpha"
+tokio = { version = "1.53", features = ["full"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+uuid = { version = "1.24", features = ["serde", "v7", "v4"] }
+argon2 = "0.5"
+
+# Network
+libp2p = { version = "0.56", features = ["noise", "yamux", "websocket", "webrtc-websys", "webtransport-websys", "quic", "kad", "gossipsub", "identify", "ping", "autonat", "relay", "dcutr", "mdns", "tcp", "tokio", "request-response", "rendezvous", "tls", "dns", "serde", "macros"] }
+multiaddr = "0.18"
+multihash = "0.19"
+cid = "0.11"
+
+# Sync (Yrs CRDT)
+yrs = { version = "0.27", features = ["sync"] }
+y-sweet = { version = "0.2" }
+
+# Media
+opus = "0.5"
+h264-reader = "0.6"
+image = "0.25"
+imageproc = "0.23"
+
+# FFI
+uniffi = { version = "0.32", features = ["tokio"] }
+uniffi_macros = "0.32"
+uniffi_build = "0.32"
+
+# Utils
+anyhow = "1.0"
+thiserror = "2.0"
+tracing = { version = "0.1", features = ["std"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+clap = { version = "4.6", features = ["derive", "env"] }
+config = { version = "0.15", features = ["toml", "yaml"] }
+dirs = "6.0"
+hex = "0.4"
+base64 = "0.23"
+ulid = "3.0"
+
+[workspace.lints.rust]
+unused_crate_dependencies = "warn"
+unused_imports = "warn"
+dead_code = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = 0 }
+nursery = { level = "warn", priority = 1 }
+cargo = { level = "warn", priority = 2 }
+redundant_closure = { level = "warn", priority = 3 }
+redundant_clone = { level = "warn", priority = 3 }
+unwrap_used = { level = "allow", priority = 3 }
+expect_used = { level = "allow", priority = 3 }
+panic = { level = "allow", priority = 3 }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = "z"
+
+[profile.dev]
+debug = 2
+opt-level = 0
+
+# Debug builds keep ML-DSA/ML-KEM keygen frame sizes tiny so the 1 MiB
+# default Windows main-thread stack is not exhausted.
+[profile.dev.package.ml-dsa]
+opt-level = 2
+
+[profile.dev.package.ml-kem]
+opt-level = 2
