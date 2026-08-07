@@ -91,6 +91,7 @@ fn main() -> Result<()> {
 fn run_demo() -> Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
+        .thread_stack_size(16 * 1024 * 1024)
         .build()
         .context("build tokio runtime")?;
     runtime.block_on(demo_main())
