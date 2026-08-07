@@ -22,8 +22,7 @@ use presidium_network::{KadMode, NodeConfig, NodeEvent, P2pNode};
 use presidium_storage::models::{MessageDirection, MessageStatus};
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::mpsc;
-
-use crate::group::{short_peer, GroupChat};
+use rand::Rng;use crate::group::{short_peer, GroupChat};
 use crate::session::{ChatSession, InitiatorHandshake, ResponderHandshake};
 use crate::store::NodeStore;
 
@@ -254,7 +253,7 @@ async fn handle_command(app: &mut App, line: &str) -> Result<bool> {
     let header_json = String::from_utf8(envelope.nonce.to_vec())?;
     let row = app.store.insert_message(
         &session.conversation_id,
-        envelope.timestamp.to_le_bytes().to_vec(),
+        message_id_bytes(envelope.timestamp),
         &app.store.identity_public(),
         &envelope.encrypted_payload,
         &header_json,
@@ -262,6 +261,12 @@ async fn handle_command(app: &mut App, line: &str) -> Result<bool> {
     )?;
     app.last_outgoing = Some(row);
     app.node.send_direct(peer, envelope).await?;
+    // Snapshot the ratchet so a restarted process can resume the chain without
+    // re-deriving a stale root key (otherwise the next message's message-number
+    // would desync against the peer).
+    if let Some(session) = app.session.as_mut() {
+        let _ = session.persist(&app.store);
+    }
     println!("[1:1] -> {line}");
     Ok(true)
 }
@@ -281,7 +286,10 @@ async fn handle_event(
             if app.peer.is_none() {
                 app.peer = Some(peer);
             }
-            if app.initiator.is_some() && app.session.is_none() && !*handshake_started {
+            if app.initiator.is_some()
+                && app.session.is_none()
+                && !*handshake_started
+            {
                 *handshake_started = true;
                 if let Some(initiator) = app.initiator.as_mut() {
                     initiator.request_bundle(&app.node).await?;
@@ -377,9 +385,15 @@ async fn handle_direct(
                 .context("invalid sender device id")?;
             let responder = app.responder.as_mut().context("prekey on initiator")?;
             let (ratchet_public, chat) = responder.on_prekey(&payload[1..], &conversation_id)?;
+            // on_prekey populated peer_identity; upsert the conversation first
+            // so the session row's foreign key resolves.
+            let peer_identity = responder
+                .peer_identity
+                .clone()
+                .context("no peer identity after prekey")?;
+            app.store
+                .upsert_conversation(&conversation_id, &peer_identity, false)?;
             chat.persist(&app.store)?;
-            let peer_identity = responder.peer_identity.clone().context("no peer identity")?;
-            app.store.upsert_conversation(&conversation_id, &peer_identity, false)?;
             app.session = Some(chat);
             let reply = session::sync_envelope(
                 &app.store.identity,
@@ -393,6 +407,16 @@ async fn handle_direct(
         Some(session::MARKER_RATCHET_PUB) => {
             let initiator = app.initiator.as_mut().context("ratchet pub on responder")?;
             let chat = initiator.establish(&payload[1..])?;
+            // Conversation row must exist before the session row's FK.
+            let peer_identity = initiator
+                .peer_identity
+                .clone()
+                .context("no peer identity after establish")?;
+            app.store.upsert_conversation(
+                &app.store.device_id,
+                &peer_identity,
+                false,
+            )?;
             chat.persist(&app.store)?;
             app.session = Some(chat);
             // Distribute the group sender key to the responder.
@@ -412,6 +436,11 @@ async fn handle_direct(
                 .unwrap()
                 .encrypt(&app.store.identity, &app.store.device_id, greeting.as_bytes())?;
             app.node.send_direct(from, envelope).await?;
+            // Snapshot the ratchet after the greeting so a restarted process
+            // resumes the correct message-number chain.
+            if let Some(session) = app.session.as_mut() {
+                let _ = session.persist(&app.store);
+            }
             println!("[initiator] session established with {}", short_peer(from));
         }
         Some(session::MARKER_GROUP_KEY) => {
@@ -435,13 +464,18 @@ async fn handle_direct(
                 }
             }
             let session = app.session.as_mut().context("no session established")?;
+            // Ensure the conversation row exists (e.g. when the session was
+            // resumed in-memory) so the message row's FK is satisfied.
+            app.store
+                .upsert_conversation(&conversation_id, &session.peer_identity, false)?;
             let plaintext = session.decrypt(&envelope)?;
             session.persist(&app.store)?;
+            eprintln!("[responder] incoming cid={conversation_id} peer={}", short_peer(from));
             println!("[1:1] {}: {}", short_peer(from), String::from_utf8_lossy(&plaintext));
             let header_json = String::from_utf8(envelope.nonce.to_vec())?;
             app.store.insert_message(
                 &conversation_id,
-                envelope.timestamp.to_le_bytes().to_vec(),
+                message_id_bytes(envelope.timestamp),
                 &session.peer_identity,
                 &envelope.encrypted_payload,
                 &header_json,
@@ -450,6 +484,14 @@ async fn handle_direct(
         }
     }
     Ok(())
+}
+
+/// Build a globally-unique message id: timestamp + random nonce, so a fast
+/// restart never collides with the `UNIQUE(conversation_id, message_id)` index.
+fn message_id_bytes(timestamp: u64) -> Vec<u8> {
+    let mut id = timestamp.to_le_bytes().to_vec();
+    id.extend_from_slice(&rand::rng().next_u32().to_le_bytes());
+    id
 }
 
 /// Extract the peer id from a multiaddr with a /p2p/ suffix.

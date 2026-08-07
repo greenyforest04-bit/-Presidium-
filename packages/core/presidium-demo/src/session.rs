@@ -72,7 +72,18 @@ impl ChatSession {
             anyhow::bail!("signature verification failed");
         }
         let peer_ratchet = X25519PublicKey::from(header.dh_public_key);
-        self.ratchet.dh_ratchet(peer_ratchet).context("dh ratchet")?;
+        // Only advance the DH ratchet when the peer actually rotated its ratchet
+        // key. Re-applying dh_ratchet to every message on the same dh_public
+        // would re-derive a fresh receiving chain each time and break the
+        // message-number chain, producing tag mismatches on the 2nd+ message.
+        let known = self
+            .ratchet
+            .receiving_chain
+            .their_ratchet_public
+            .or(self.ratchet.sending_chain.their_ratchet_public);
+        if known.as_ref().map(|k| k.as_slice()) != Some(&header.dh_public_key[..]) {
+            self.ratchet.dh_ratchet(peer_ratchet).context("dh ratchet")?;
+        }
         let plaintext = self
             .ratchet
             .decrypt(&envelope.encrypted_payload, &header)
