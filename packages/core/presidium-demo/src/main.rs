@@ -311,9 +311,13 @@ async fn handle_event(
                         .as_ref()
                         .map(|s| s.peer_identity.clone())
                         .unwrap_or_else(|| app.store.identity_public());
+                    // Make sure the group conversation row exists so the group
+                    // message row's FK into `conversations` is satisfied.
+                    app.store
+                        .upsert_conversation(&app.group.conversation_id, &sender, true)?;
                     app.store.insert_message(
                         &app.group.conversation_id,
-                        envelope.timestamp.to_le_bytes().to_vec(),
+                        message_id_bytes(envelope.timestamp),
                         &sender,
                         &envelope.encrypted_payload,
                         &String::from_utf8(envelope.nonce.to_vec())?,
@@ -470,7 +474,6 @@ async fn handle_direct(
                 .upsert_conversation(&conversation_id, &session.peer_identity, false)?;
             let plaintext = session.decrypt(&envelope)?;
             session.persist(&app.store)?;
-            eprintln!("[responder] incoming cid={conversation_id} peer={}", short_peer(from));
             println!("[1:1] {}: {}", short_peer(from), String::from_utf8_lossy(&plaintext));
             let header_json = String::from_utf8(envelope.nonce.to_vec())?;
             app.store.insert_message(
